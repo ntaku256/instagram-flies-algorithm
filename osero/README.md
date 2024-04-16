@@ -13,6 +13,7 @@ pip install matplotlib
 pip install scikit-learn
 ```
 
+
 ## 着想
 人間がSNSでいいねを獲得しようとする行動を模した進化的計算手法。いいね数を稼ぐために動画の方針を決定するアルゴリズム。個体: Instagrammer, Youtuber。評価: いいね数。
 
