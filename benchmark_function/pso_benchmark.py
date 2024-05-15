@@ -8,8 +8,8 @@ from benchmark_function import BenchmarkFunction as BF
 
 bf = BF()
 
-def Evaluate(x,y):
-    return 50 - (x*x + y*y)
+def Evaluate(vector):
+    return bf.rosenbrock_star(vector)
 
 def Pareto(mode,a,shape):
     return (np.random.pareto(a,size=shape)+1)*mode
@@ -23,15 +23,15 @@ def roulett(table):
         if(sum > rand):
             return i
 
-def filtIndivisual(vector):
+def filtIndivisual(vector,r):
     for i in range(1*2):
-        vector[i] = max(-5,min(5,vector[i]))
+        vector[i] = max(-r,min(r,vector[i]))
 
-def InitIndivisual():
-    return np.random.uniform(-5,5,(1*2))
+def InitIndivisual(r):
+    return np.random.uniform(-r,r,(1*2))
 
-def EvalIndivisual(x,y):
-    return Evaluate(x,y)
+def EvalIndivisual(vector):
+    return 3500-Evaluate(vector)
 
 
 class PSO:
@@ -40,6 +40,7 @@ class PSO:
     w = None
     c1 = None
     c2 = None
+    r = None
     vectors = None
     scores = None
     g_best_score = None
@@ -47,17 +48,18 @@ class PSO:
     p_best_scores = None
     p_best_vectors = None
 
-    def __init__(self,n_iter,n_swarm,w,c1,c2):
+    def __init__(self,n_iter,n_swarm,w,c1,c2,r):
         self.n_iter = n_iter
         self.n_swarm = n_swarm
         self.w = w
         self.c1 = c1
         self.c2 = c2
+        self.r = r
         self.InitSwarms()
         self.CalcScores()
 
     def InitSwarms(self):
-        self.vectors = np.array([InitIndivisual() for _ in range(self.n_swarm)])
+        self.vectors = np.array([InitIndivisual(self.r) for _ in range(self.n_swarm)])
         self.speeds = np.zeros_like(self.vectors)
         self.p_best_scores = np.zeros(self.n_swarm)
         self.p_best_vectors = np.zeros_like(self.vectors)
@@ -66,16 +68,16 @@ class PSO:
         self.scores = np.zeros(self.n_swarm)
     
     def CalcScores(self):
-        enemy = np.random.randint(0,self.n_swarm,1)
+        print(EvalIndivisual(self.vectors))
+        new_score = EvalIndivisual(self.vectors)
         for i in range(self.n_swarm):
-            new_score = EvalIndivisual(self.vectors[i][0],self.vectors[i][1])
-            if new_score > self.p_best_scores[i]:
-                self.p_best_scores[i] = new_score
+            if new_score[i] > self.p_best_scores[i]:
+                self.p_best_scores[i] = new_score[i]
                 self.p_best_vectors[i] = np.copy(self.vectors[i])
-            if new_score > self.g_best_score:
-                self.g_best_score = new_score
+            if new_score[i] > self.g_best_score:
+                self.g_best_score = new_score[i]
                 self.g_best_vector = np.copy(self.vectors[i])
-            self.scores[i] = new_score
+            self.scores[i] = new_score[i]
 
     def UpdateVectors(self):
         for i in range(self.n_swarm):
@@ -87,38 +89,41 @@ class PSO:
     def Run(self):
         fig = plt.figure()
         ax = Axes3D(fig)
-        a = 5.12
-        X = np.linspace(-a, a, 100)
-        Y = np.linspace(-a, a, 100)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('f')
+        fig.add_axes(ax)
+        X = np.linspace(-self.r, self.r, 100)
+        Y = np.linspace(-self.r, self.r, 100)
         XX, YY = np.meshgrid(X, Y)
         d = XX.shape
         input_array = np.vstack((XX.flatten(), YY.flatten())).T
-        Z = bf.sphere(input_array)
+        Z = Evaluate(input_array)
         ZZ = Z.reshape(d)
-
         imgs = []
-        for i in range(self.n_iter):
 
-            title = plt.title('i=' + str(i))
-            scatter_vector = ax.scatter(self.p_best_vectors.T[0], self.p_best_vectors.T[1],bf.sphere(self.p_best_vectors),c="green", s=10, alpha=1)
-            scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.6)
-            imgs.append([scatter_vector,scatter_func,title])
+        for i in range(self.n_iter):
+            if i != 0:
+                title = ax.text(0,0,5600,  '%s' % (str(i)), size=20, zorder=1,  color='k') 
+                scatter_vector = ax.scatter(self.p_best_vectors.T[0], self.p_best_vectors.T[1],Evaluate(self.p_best_vectors),c="green", s=10, alpha=1)
+                scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.7)
+                imgs.append([scatter_vector,scatter_func,title])
 
             self.CalcScores()
             self.UpdateVectors()
         
-        fig.add_axes(ax)
         ani = anime.ArtistAnimation(fig, imgs,interval=500)
-        ani.save("benchmark_function/pso.gif",writer="imagemagick")
+        ani.save("benchmark_function/pso_rosenbrock_star.gif",writer="imagemagick")
         plt.show()
         return self.g_best_score,self.g_best_vector
 
 if __name__ == "__main__":
     n_indivisuals = 150
-    n_iters = 100
+    n_iters = 15
     c1 = 0.7
     c2 = 0.7
     w = 0.9
-    pso = PSO(n_iters,n_indivisuals,w,c1,c2)
+    r = 2
+    pso = PSO(n_iters,n_indivisuals,w,c1,c2,r)
     score,result = pso.Run()
     print(score,result)

@@ -23,12 +23,12 @@ def roulett(table):
         if(sum > rand):
             return i
 
-def filtIndivisual(vector):
+def filtIndivisual(vector,r):
     for i in range(1*2):
-        vector[i] = max(-5,min(5,vector[i]))
+        vector[i] = max(-r,min(r,vector[i]))
 
-def InitIndivisual():
-    return np.random.uniform(-5,5,(1*2))
+def InitIndivisual(r):
+    return np.random.uniform(-r,r,(1*2))
 
 def EvalIndivisual(x,y):
     return Evaluate(x,y)
@@ -37,8 +37,8 @@ class InstaGramFlies:
     n_iters = None
     n_clusters = None
     n_flies = None
- 
     centers = None
+    r = None
     # best fly in in each cluster
     best_fly_indices = None
     cluster_like_average = None
@@ -53,15 +53,16 @@ class InstaGramFlies:
     p_best_vectors = None
     p_best_score = None
 
-    def __init__(self, n_iters, n_clusters, n_flies):
+    def __init__(self, n_iters, n_clusters, n_flies,r):
         self.n_iters = n_iters
         self.n_clusters = n_clusters
         self.n_flies = n_flies
+        self.r = r
         self.InitFlies()
         self.EvaluateLikes()
 
     def InitFlies(self):
-        self.vectors = np.array([InitIndivisual() for _ in range(self.n_flies)])
+        self.vectors = np.array([InitIndivisual(self.r) for _ in range(self.n_flies)])
         self.p_best_vectors = np.zeros_like(self.vectors)
         self.p_best_score = np.zeros(self.n_flies)
         self.strategies = np.zeros([self.n_flies, 3])
@@ -74,63 +75,40 @@ class InstaGramFlies:
         self.best_fly_indices = np.zeros(self.n_clusters)
 
     def Run(self):
-        # fig, ax = plt.subplots()
-        # imgs = []
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('f')
+        fig.add_axes(ax)
+        X = np.linspace(-self.r, self.r, 100)
+        Y = np.linspace(-self.r, self.r, 100)
+        XX, YY = np.meshgrid(X, Y)
+        d = XX.shape
+        input_array = np.vstack((XX.flatten(), YY.flatten())).T
+        Z = bf.sphere(input_array)
+        ZZ = Z.reshape(d)
+        imgs = []
+
         for i in range(self.n_iters):
             self.EvaluateLikes()
-            """"""
-            # if not self.centers is None:
-            #     title = plt.text(0.5,1.01,i, ha="center",va="bottom",transform=ax.transAxes, fontsize="large")
-            #     # scatter_center = ax.scatter(self.centers.T[0], self.centers.T[1], marker="*",c="red")
-            #     # scatter_vector = ax.scatter(self.vectors.T[0], self.vectors.T[1], marker=".",c="blue")
-            #     # imgs.append([scatter_center,scatter_vector,title])
-            #     scatter_vector = ax.scatter(self.p_best_vectors.T[0], self.p_best_vectors.T[1], marker=".",c="blue")
-            #     imgs.append([scatter_vector,title])
+            if not self.centers is None:
+                title = ax.text(0,0,80,  '%s' % (str(i)), size=20, zorder=1,  color='k') 
+                scatter_vector = ax.scatter(self.p_best_vectors.T[0], self.p_best_vectors.T[1],bf.sphere(self.p_best_vectors),c="green", s=10, alpha=1)
+                scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.55)
+                imgs.append([scatter_vector,title])
 
-            if i == 0 or i == 1 or i == 2 or i == 3 or i == 5 or i%50 == 0:
-                self.Visualization(self.p_best_vectors)
-            """"""
             self.Clustering()
             self.UpdateFlieVector()
-        """"""
-        # plt.xlim(-5,5)
-        # plt.ylim(-5,5)
-        # plt.grid(True)
-        # ani = anime.ArtistAnimation(fig, imgs,interval=500)
-        # ani.save("benchmark_function/insta_files.gif",writer="imagemagick")
-        # plt.show()
-        """"""
 
+        ani = anime.ArtistAnimation(fig, imgs,interval=500)
+        ani.save("benchmark_function/pso.gif",writer="imagemagick")
+        plt.show()
         self.EvaluateLikes()
         best_arg = np.argmax(self.likes)
         return self.likes[best_arg],self.vectors[best_arg]
 
-    def Visualization(self,vectors):
-        fig = plt.figure()
-        ax = Axes3D(fig)
-        fig.add_axes(ax)
-
-        a = 5.12
-        X = np.linspace(-a, a, 100)
-        Y = np.linspace(-a, a, 100)
-        XX, YY = np.meshgrid(X, Y)
-        d = XX.shape
-        input_array = np.vstack((XX.flatten(), YY.flatten())).T
-
-        Z = bf.sphere(input_array)
-        ZZ = Z.reshape(d)
-
-        ax.scatter(vectors.T[0], vectors.T[1],bf.sphere(vectors),c="green", s=10, alpha=1)
-        ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.6)
-        ax.set_xlabel('x1')
-        ax.set_ylabel('x2')
-        ax.set_zlabel('f')
-        plt.show()
-
-
-
     def EvaluateLikes(self):
-        enemy = np.random.randint(0,self.n_flies,1)
         for i in range(self.n_flies):
             self.likes[i] = EvalIndivisual(self.vectors[i][0],self.vectors[i][1])
 
@@ -145,7 +123,7 @@ class InstaGramFlies:
         self.labels = result.labels_
         self.center_speeds = result.cluster_centers_ - self.centers
         self.centers = result.cluster_centers_
-      
+    
         # best flies in each cluster
         best = np.zeros(self.n_clusters)
         self.cluster_like_average = np.zeros(self.n_clusters)
@@ -178,11 +156,11 @@ class InstaGramFlies:
                 self.vectors[i] = self.UpdatePioneer(self.vectors[i])
             # faddist
             if action == 1:
-                 self.vectors[i] = self.UpdateFaddist(self.vectors[i])
+                self.vectors[i] = self.UpdateFaddist(self.vectors[i])
             # master
             if action == 2:
                 self.vectors[i] = self.UpdateMaster(self.vectors[i], self.labels[i])
-            filtIndivisual(self.vectors[i])
+            filtIndivisual(self.vectors[i],self.r)
 
     def UpdatePioneer(self, vector):
         length = Pareto(1,6,self.center_dist_average.shape)
@@ -205,8 +183,9 @@ class InstaGramFlies:
 
 if __name__ == "__main__":
     n_indivisuals = 150
-    n_iters = 100
+    n_iters = 10
     n_clusters = 10
-    insta = InstaGramFlies(n_iters, n_clusters, n_indivisuals)
+    r = 5
+    insta = InstaGramFlies(n_iters, n_clusters, n_indivisuals,r)
     score, result = insta.Run()
     print(score,result)
