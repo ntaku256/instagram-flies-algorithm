@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anime
+import openpyxl
 from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -63,12 +64,14 @@ class InstaGramFlies:
     vectors = None  # np.array([x1,x2,x3,...]) x1: np.array
     p_best_vectors = None
     p_best_score = None
+    t_g_score = []
 
     def __init__(self, n_iters, n_clusters, n_flies,r):
         self.n_iters = n_iters
         self.n_clusters = n_clusters
         self.n_flies = n_flies
         self.r = r
+        self.t_g_score = []
         self.InitFlies()
         self.EvaluateLikes()
 
@@ -86,40 +89,44 @@ class InstaGramFlies:
         self.best_fly_indices = np.zeros(self.n_clusters)
 
     def Run(self):
-        fig = plt.figure()
-        ax = Axes3D(fig)
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('f')
-        fig.add_axes(ax)
-        X = np.linspace(-self.r, self.r, 100)
-        Y = np.linspace(-self.r, self.r, 100)
-        XX, YY = np.meshgrid(X, Y)
-        d = XX.shape
-        input_array = np.vstack((XX.flatten(), YY.flatten())).T
-        Z = Evaluate(input_array)
-        ZZ = Z.reshape(d)
-        imgs = []
+        # fig = plt.figure()
+        # ax = Axes3D(fig)
+        # ax.set_xlabel('x')
+        # ax.set_ylabel('y')
+        # ax.set_zlabel('f')
+        # fig.add_axes(ax)
+        # X = np.linspace(-self.r, self.r, 100)
+        # Y = np.linspace(-self.r, self.r, 100)
+        # XX, YY = np.meshgrid(X, Y)
+        # d = XX.shape
+        # input_array = np.vstack((XX.flatten(), YY.flatten())).T
+        # Z = Evaluate(input_array)
+        # ZZ = Z.reshape(d)
+        # imgs = []
 
         for i in range(self.n_iters):
             self.EvaluateLikes()
-            if (not self.centers is None) and (i < 2 or i == 4 or i == int(self.n_iters/2 -1) or i == self.n_iters -1):
-                title = ax.text(0,0,1.61*max(Z),  '%s' % (str(i+1)), size=20, zorder=1,  color='k') 
-                scatter_center = ax.scatter(self.centers.T[0], self.centers.T[1],Evaluate(self.centers),c="red", s=10, alpha=0.5)
-                scatter_vector = ax.scatter(self.p_best_vectors.T[0], self.p_best_vectors.T[1],Evaluate(self.p_best_vectors),c="green", s=5, alpha=0.5)
-                scatter_vector1 = ax.scatter(self.vectors.T[0], self.vectors.T[1],Evaluate(self.vectors),c="blue", s=5, alpha=0.5)
-                scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.55)
-                imgs.append([scatter_func,scatter_center,scatter_vector,scatter_vector1,title])
+            # if (not self.centers is None) and (i < 2 or i == 4 or i == int(self.n_iters/2 -1) or i == self.n_iters -1):
+            # if (not self.centers is None) and (i < 2 or i == 4 or (i+1)%50 == 0  or i == self.n_iters - 1):
+            #     title = ax.text(0,0,1.61*max(Z),  '%s' % (str(i+1)), size=20, zorder=1,  color='k') 
+            #     scatter_center = ax.scatter(self.centers.T[0], self.centers.T[1],Evaluate(self.centers),c="red", s=10, alpha=0.5)
+            #     # scatter_vector = ax.scatter(self.p_best_vectors.T[0], self.p_best_vectors.T[1],Evaluate(self.p_best_vectors),c="green", s=5, alpha=0.5)
+            #     scatter_vector1 = ax.scatter(self.vectors.T[0], self.vectors.T[1],Evaluate(self.vectors),c="blue", s=5, alpha=0.5)
+            #     scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.55)
+            #     imgs.append([scatter_func,scatter_center,scatter_vector1,title])
 
             self.Clustering()
             self.UpdateFlieVector()
+            best_arg = np.argmin(self.p_best_score)
+            self.t_g_score.append(self.p_best_score[best_arg])
 
-        ani = anime.ArtistAnimation(fig, imgs,interval=1000)
-        ani.save("benchmark_function/GIF/insta_files/insta_files.gif",writer="imagemagick")
-        plt.show()
+        # ani = anime.ArtistAnimation(fig, imgs,interval=1000)
+        # ani.save("benchmark_function/GIF/insta_files/insta_files.gif",writer="imagemagick")
+        # plt.show()
         self.EvaluateLikes()
-        best_arg = np.argmin(self.likes)
-        return self.likes[best_arg],self.vectors[best_arg]
+        # best_arg = np.argmin(self.likes)
+        best_arg = np.argmin(self.p_best_score)
+        return self.t_g_score,self.p_best_score[best_arg],self.vectors[best_arg]
 
     def EvaluateLikes(self):
         self.likes = EvalIndivisual(self.vectors)
@@ -164,13 +171,13 @@ class InstaGramFlies:
         for i in range(self.n_flies):
             action = roulett(self.strategies[i])
             # pioneer
-            if action == 0:
+            if action == 5:
                 self.vectors[i] = self.UpdatePioneer(self.vectors[i])
             # faddist
-            if action == 1:
+            if action == 3 :
                 self.vectors[i] = self.UpdateFaddist(self.vectors[i])
             # master
-            if action == 2:
+            if action == 0 or action == 1 or action == 2:
                 self.vectors[i] = self.UpdateMaster(self.vectors[i], self.labels[i])
             filtIndivisual(self.vectors[i],self.r)
 
@@ -195,9 +202,27 @@ class InstaGramFlies:
 
 if __name__ == "__main__":
     n_indivisuals = 150
-    n_iters = 100
+    n_iters = 1000
     n_clusters = 10
     r = 5.12 #5.12 or 2.048 or 100
-    insta = InstaGramFlies(n_iters, n_clusters, n_indivisuals,r)
-    score, result = insta.Run()
-    print(score,result)
+    best = []
+    for i in range(1):
+        insta = InstaGramFlies(n_iters, n_clusters, n_indivisuals,r)
+        g_score,score, result = insta.Run()
+        best.append(g_score)
+        print(score,result)
+
+    write_wb = openpyxl.load_workbook("Books/Book_write.xlsx")
+    write_ws = write_wb["Sheet1"]
+
+    # シートを初期化
+    for row in write_ws:
+        for cell in row:
+            cell.value = None
+
+    for i in range(len(best)):
+        for j in range(len(best[i])):
+            c = write_ws.cell(j+1 , i+1)
+            c.value = best[i][j]
+            
+    write_wb.save("Books/Book_write.xlsx")

@@ -181,4 +181,3 @@ class BenchmarkFunction:
             'rastrigin' : ones,
         }
         return optimal_solution
-    
