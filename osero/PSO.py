@@ -6,6 +6,7 @@ from osero import PlayOsero
 
 def Evaluate(stoneMap1,stoneMap2):
     n_white,n_black,n_sum = PlayOsero(stoneMap1,stoneMap2)
+    print(n_white)
     return n_white + 8*8 - n_sum
 
 def Pareto(mode,a,shape):
@@ -82,13 +83,14 @@ class PSO:
         for i in range(self.n_swarm):
             r1 = np.random.uniform(0,1,self.vectors[0].shape)
             r2 = np.random.uniform(0,1,self.vectors[0].shape)
-            self.speeds[i] = self.w*self.speeds[i]+r1*(self.p_best_vectors[i]-self.vectors[i])+r2*(self.g_best_vector-self.vectors[i])
+            self.speeds[i] = self.w*self.speeds[i]+self.c1*r1*(self.p_best_vectors[i]-self.vectors[i])+self.c2*r2*(self.g_best_vector-self.vectors[i])
             self.vectors[i] = self.vectors[i] + self.speeds[i]
 
     def Run(self):
         for i in range(self.n_iter):
             self.CalcScores()
             self.UpdateVectors()
+            self.w = self.w - ((self.w - 0.4)/self.n_iter)
         return self.g_best_score,self.g_best_vector
 
 

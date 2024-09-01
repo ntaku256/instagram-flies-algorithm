@@ -14,8 +14,6 @@ if __name__ == "__main__":
     c1 = 0.7
     c2 = 0.7
     w = 0.9
-    pso = PSO(n_iters,n_indivisuals,w,c1,c2)
-    instaFlies = InstaGramFlies(n_iters, n_clusters, n_indivisuals)
     stoneMap = []
     flag = True
     # pso,if
@@ -24,8 +22,10 @@ if __name__ == "__main__":
 
     for i in range(10):
         print("PSO run")
+        pso = PSO(n_iters,n_indivisuals,w,c1,c2)
         _,pso_res = pso.Run()
         print("InstaFiles run")
+        instaFlies = InstaGramFlies(n_iters, n_clusters, n_indivisuals)
         _, if_res = instaFlies.Run()
         if flag:
             n_white,n_black,_ = PlayOsero(pso_res.reshape((8,8)),if_res.reshape((8,8)))
