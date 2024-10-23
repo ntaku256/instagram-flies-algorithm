@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anime
 from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
-
+import openpyxl
 from benchmark_function import BenchmarkFunction as BF
 
 bf = BF()
 
 def Evaluate(vector):
-    return bf.schaffer(vector)
+    return bf.sphere(vector)
 
 def Pareto(mode,a,shape):
     return (np.random.pareto(a,size=shape)+1)*mode
@@ -47,14 +47,18 @@ class PSO:
     g_best_vector = None
     p_best_scores = None
     p_best_vectors = None
+    j = None
+    t_g_score = []
 
-    def __init__(self,n_iter,n_swarm,w,c1,c2,r):
+    def __init__(self,n_iter,n_swarm,w,c1,c2,r,j):
         self.n_iter = n_iter
         self.n_swarm = n_swarm
         self.w = w
         self.c1 = c1
         self.c2 = c2
         self.r = r
+        self.j = j
+        self.t_g_score = []
         self.InitSwarms()
         self.CalcScores()
 
@@ -82,7 +86,7 @@ class PSO:
         for i in range(self.n_swarm):
             r1 = np.random.uniform(0,1,self.vectors[0].shape)
             r2 = np.random.uniform(0,1,self.vectors[0].shape)
-            self.speeds[i] = self.w*self.speeds[i]+r1*(self.p_best_vectors[i]-self.vectors[i])+r2*(self.g_best_vector-self.vectors[i])
+            self.speeds[i] = self.w*self.speeds[i]+self.c1*r1*(self.p_best_vectors[i]-self.vectors[i])+self.c2*r2*(self.g_best_vector-self.vectors[i])
             self.vectors[i] = self.vectors[i] + self.speeds[i]
             filtIndivisual(self.vectors[i],self.r)
         
@@ -94,6 +98,8 @@ class PSO:
         ax.set_ylabel('y')
         ax.set_zlabel('f')
         fig.add_axes(ax)
+        ax.view_init(elev=70, azim=0)
+        # ax.view_init(elev=30, azim=-60)
         X = np.linspace(-self.r, self.r, 101)
         Y = np.linspace(-self.r, self.r, 101)
         XX, YY = np.meshgrid(X, Y)
@@ -103,28 +109,68 @@ class PSO:
         ZZ = Z.reshape(d)
         imgs = []
 
+        # write_wb = openpyxl.load_workbook("Books/Book_write.xlsx")
+        # write_ws = write_wb["Sheet1"]
+
+        # シートを初期化
+        # for row in write_ws:
+        #     for cell in row:
+        #         cell.value = None
+
         for i in range(self.n_iter):
             self.CalcScores()
             self.UpdateVectors()
-            if i < 2 or i == 4 or i == int(self.n_iter/2 - 1) or i == self.n_iter - 1:
-                title = ax.text(0,0,37,  '%s' % (str(i+1)), size=20, zorder=1,  color='k') 
-                scatter_vector = ax.scatter(self.p_best_vectors.T[0], self.p_best_vectors.T[1],Evaluate(self.p_best_vectors),c="green", s=10, alpha=1)
-                scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.3)
+
+            # c = write_ws.cell(i+1 , self.j+1)
+            # c.value = self.g_best_score
+
+
+            # if i < 2 or i == 4 or i == int(self.n_iter/2 - 1) or i == self.n_iter - 1:
+            if i < 2 or i == 4 or (i+1)%20 == 0 or i == self.n_iter - 1  :
+                title = ax.text(0,0,1.8*1.61*max(Z),  't=%s' % (str(i+1)), size=20, zorder=1,  color='k') 
+                scatter_vector = ax.scatter(self.vectors.T[0], self.vectors.T[1],Evaluate(self.vectors),c="black", s=20, alpha=1)
+                scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.55)
                 imgs.append([scatter_vector,scatter_func,title])
             # print(self.g_best_score,self.g_best_vector)
+
+            self.t_g_score.append(self.g_best_score)
+
+            self.w = self.w - ((self.w - 0.4)/self.n_iter)
         
-        ani = anime.ArtistAnimation(fig, imgs,interval=1000)
-        ani.save("benchmark_function/GIF/pso_schaffer.gif",writer="imagemagick")
+        ani = anime.ArtistAnimation(fig, imgs,interval=600)
+        ani.save("benchmark_function/GIF/pso/pso.gif",writer="imagemagick")
         plt.show()
-        return self.g_best_score,self.g_best_vector
+
+        # write_wb.save("Books/Book_write.xlsx")
+        return self.t_g_score,self.g_best_score,self.g_best_vector
 
 if __name__ == "__main__":
     n_indivisuals = 150
-    n_iters = 50
-    c1 = 0.7
-    c2 = 0.7
+    n_iters = 200
+    c1 = 0.7 #0.7*2
+    c2 = 0.7 #0.7*2
     w = 0.9
-    r = 100
-    pso = PSO(n_iters,n_indivisuals,w,c1,c2,r)
-    score,result = pso.Run()
-    print(score,result)
+    r = 2.048
+    best = []
+    pso = PSO(n_iters,n_indivisuals,w,c1,c2,r,0)
+    for i in range(1):
+        pso = PSO(n_iters,n_indivisuals,w,c1,c2,r,i)
+        g_score,score,result = pso.Run()
+        best.append(g_score)
+        print(result)
+        print(score)
+
+    write_wb = openpyxl.load_workbook("results/Book_write.xlsx")
+    write_ws = write_wb["Sheet1"]
+
+    # シートを初期化
+    for row in write_ws:
+        for cell in row:
+            cell.value = None
+
+    for i in range(len(best)):
+        for j in range(len(best[i])):
+            c = write_ws.cell(j+1 , i+1)
+            c.value = best[i][j]
+            
+    write_wb.save("results/Book_write.xlsx")

@@ -7,6 +7,10 @@ import math
 
 import numpy as np
 
+from decimal import Decimal, getcontext
+import mpmath
+getcontext().prec = 140
+mpmath.mp.dps = 140
 
 # check dimension
 def check(x):
@@ -112,6 +116,21 @@ class BenchmarkFunction:
         
         return (100*(input_array_1st-input_array_rest**2)**2 \
                 +(1-input_array_rest)**2).sum(axis=1)
+        
+        # input_arrayの検証
+        input_array = check(input_array)
+        
+        # input_arrayをDecimal型に変換
+        input_array_1st = np.array([mpmath.mpf(x) for x in input_array[:, :1].flatten()])
+        input_array_rest = np.array([mpmath.mpf(x) for x in input_array[:, 1:].flatten()])
+        # Calculate Rosenbrock function with high precision
+        term1 = 100 * (input_array_1st - input_array_rest**2)**2
+        term2 = (1 - input_array_rest)**2
+        result = [term1[i] + term2[i] for i in range(len(term1))]
+        # 結果を有効桁数8桁の指数表記で返す
+        # result = np.array([f"{float(r):.8e}" for r in result], dtype=object)
+        
+        return result
 
     def rosenbrock_chain(self, input_array):
         input_array = check(input_array)
@@ -147,9 +166,31 @@ class BenchmarkFunction:
     def rastrigin(self, input_array):
         input_array = check(input_array)
         dim = input_array.shape[1]
-        
+
         return 10*dim + \
                 ((input_array-1)**2-10*np.cos(2*np.pi*(input_array-1))).sum(axis=1)
+
+        input_array = check(input_array)
+        dim = input_array.shape[1]
+        
+        # input_arrayをmpmathのmpf型に変換
+        input_array = np.array([mpmath.mpf(x) for x in input_array.flatten()])
+        input_array = input_array.reshape(-1, dim)
+        
+        # Rastrigin関数の計算をmpmathで行う
+        A = mpmath.mpf(10)
+        term1 = A * mpmath.mpf(dim)
+        
+        term2 = np.array([((x - 1)**2 - A * mpmath.cos(2 * mpmath.pi * (x - 1))) for x in input_array.flatten()])
+        term2 = term2.reshape(-1, dim)
+        
+        # 結果を合計し、Decimal型に変換
+        result = [term1 + mpmath.fsum(row) for row in term2]
+        
+        # 結果を有効桁数8桁の指数表記で返す
+        # result = np.array([f"{float(r):.8e}" for r in result], dtype=object)
+
+        return result
 
     def search_area(self):
         search_area = {
@@ -182,3 +223,12 @@ class BenchmarkFunction:
         }
         return optimal_solution
     
+if __name__ == "__main__":
+    bench = BenchmarkFunction()
+
+    data = [
+        [1e-30,1e-30],
+        [1e-60,1e-60]
+    ]
+    result = bench.rosenbrock_star(data)
+    print(result)
