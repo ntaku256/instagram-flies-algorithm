@@ -126,31 +126,31 @@ class PSO:
 
 
             # if i < 2 or i == 4 or i == int(self.n_iter/2 - 1) or i == self.n_iter - 1:
-            if i < 2 or i == 4 or (i+1)%20 == 0 or i == self.n_iter - 1  :
-                title = ax.text(0,0,1.8*1.61*max(Z),  't=%s' % (str(i+1)), size=20, zorder=1,  color='k') 
-                scatter_vector = ax.scatter(self.vectors.T[0], self.vectors.T[1],Evaluate(self.vectors),c="black", s=20, alpha=1)
-                scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.55)
-                imgs.append([scatter_vector,scatter_func,title])
+            # if i < 2 or i == 4 or (i+1)%20 == 0 or i == self.n_iter - 1  :
+            #     title = ax.text(0,0,1.8*1.61*max(Z),  't=%s' % (str(i+1)), size=20, zorder=1,  color='k') 
+            #     scatter_vector = ax.scatter(self.vectors.T[0], self.vectors.T[1],Evaluate(self.vectors),c="black", s=20, alpha=1)
+            #     scatter_func = ax.plot_surface(XX, YY, ZZ, rstride = 1, cstride = 1, cmap = plt.cm.coolwarm,alpha=0.55)
+            #     imgs.append([scatter_vector,scatter_func,title])
             # print(self.g_best_score,self.g_best_vector)
 
             self.t_g_score.append(self.g_best_score)
 
             self.w = self.w - ((self.w - 0.4)/self.n_iter)
         
-        ani = anime.ArtistAnimation(fig, imgs,interval=600)
-        ani.save("benchmark_function/GIF/pso/pso.gif",writer="imagemagick")
-        plt.show()
+        # ani = anime.ArtistAnimation(fig, imgs,interval=600)
+        # ani.save("benchmark_function/GIF/pso/pso.gif",writer="imagemagick")
+        # plt.show()
 
         # write_wb.save("Books/Book_write.xlsx")
         return self.t_g_score,self.g_best_score,self.g_best_vector
 
 if __name__ == "__main__":
     n_indivisuals = 150
-    n_iters = 200
+    n_iters = 500
     c1 = 0.7 #0.7*2
     c2 = 0.7 #0.7*2
     w = 0.9
-    r = 2.048
+    r = 5.12
     best = []
     pso = PSO(n_iters,n_indivisuals,w,c1,c2,r,0)
     for i in range(1):

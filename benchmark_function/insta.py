@@ -12,7 +12,7 @@ bf = BF()
 
 # 評価値の計算
 def Evaluate(vector):
-    return bf.rosenbrock_star(vector)
+    return bf.rastrigin(vector)
 
 # パレート分布
 # a: 分布の幅,小さいと大きい外れ値が出る
@@ -182,6 +182,9 @@ class InstaGramFlies:
 
             self.UpdateFlieVector()
 
+        best_arg = np.argmin(self.p_best_score)
+        t_best_score.append(self.p_best_score[best_arg])
+
         ani = anime.ArtistAnimation(fig, imgs,interval=600)
         ani.save("benchmark_function/GIF/insta_files/insta_files.gif",writer="imagemagick")
         plt.show()
@@ -239,17 +242,17 @@ class InstaGramFlies:
         for i in range(self.n_flies):
             action = roulett(self.strategies[i])
             # pioneer  or action >= 0
-            if action == 0:
-                self.vectors[i] = self.UpdatePioneer(self.vectors[i])
-                self.vector_strategy[i] = "green"
+            # if action == 0:
+            #     self.vectors[i] = self.UpdatePioneer(self.vectors[i])
+            #     self.vector_strategy[i] = "green"
             # faddist
-            if action == 1:
+            if action == 1 or action >= 0:
                 self.vectors[i] = self.UpdateFaddist(self.vectors[i])
                 self.vector_strategy[i] = "blue"
             # master
-            if action == 2 :
-                self.vectors[i] = self.UpdateMaster(self.vectors[i], self.labels[i],self.master_w,self.master_c1,self.master_c2,self.master_c3)
-                self.vector_strategy[i] = "red"
+            # if action == 2 :
+            #     self.vectors[i] = self.UpdateMaster(self.vectors[i], self.labels[i],self.master_w,self.master_c1,self.master_c2,self.master_c3)
+            #     self.vector_strategy[i] = "red"
             filtIndivisual(self.vectors[i],self.range)
 
     def UpdatePioneer(self, vector):
@@ -288,7 +291,7 @@ if __name__ == "__main__":
     n_indivisuals = 150
     n_iters = 500
     n_clusters = 10
-    r = 2.048  #5.12 or 2.048 or 100
+    r = 5.12  #5.12 or 2.048 or 100
 
     # 慣性
     # クラスタの中心に向かうベクトルにかける係数
@@ -296,19 +299,19 @@ if __name__ == "__main__":
     # クラスタのベクトルにかける係数
 
     master_w =  1
-    master_c1 = 1 #0.2
-    master_c2 = 1 #1.7
-    master_c3 = 1 #0.3
+    master_c1 = 0.2 #0.2
+    master_c2 = 1.7 #1.7
+    master_c3 = 0.3 #0.3
 
     faddist_w = 1 #0.4
-    faddist_c1 = 1 #0.3 
-    faddist_c2 =  1 #1.3
-    faddist_c3 = 1 #0.2 
+    faddist_c1 = 0.3  #0.3 
+    faddist_c2 =  1.3 #1.3
+    faddist_c3 = 0.2 #0.2 
 
-    faddist_w = 1 #0.4
-    faddist_c1 = 1 #0.8
-    faddist_c2 = 1 #0.5
-    faddist_c3 = 1 #1.3
+    # faddist_w = 1 #0.4
+    # faddist_c1 = 1 #0.8
+    # faddist_c2 = 1 #0.5
+    # faddist_c3 = 1 #1.3
 
     # faddist_w = 1
     # faddist_c1 = 0.8
