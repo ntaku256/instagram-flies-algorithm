@@ -1,9 +1,13 @@
+import numpy as np
 import path_planning as pp
 import matplotlib.pyplot as plt
-import matplotlib.animation as anime
+import matplotlib.animation as animation
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from pso import PSO
-from abc import ABC as ABCAlgorithm  # この行を削除# filepath: c:\Users\moriken\Documents\instabae-algrithm\instagram-flies-algorithm\path-planning\main.py
-from aco import ACO
+from abc_algorithm import ABC_Algorithm
+from aco_algorithm import ACO_Algorithm
+from instabae_algorithm import IA_Algorithm
+from instabae_v2_algorithm import IA_V2_Algorithm
 
 plt.rcParams["figure.autolayout"] = True
 
@@ -43,32 +47,41 @@ problem = {
     'cost_function': cost_function,
 }
 
-# アニメーション用のフレームを保存するリスト
-frames = []
+# 保存用リスト
+frame_data = []
 
-# Callback function
-path_line = None
+# callbackでデータだけ貯めておく
 def callback(data):
-    global path_line, frames
-    it = data['it']
-    sol = data['gbest']['details']['sol']
-    
-    if it == 1:
-        fig = plt.figure(figsize=[7, 7])
-        pp.plot_environment(env)
-        path_line = pp.plot_path(sol, color='b')
-        plt.grid(True)
-    else:
-        pp.update_path(sol, path_line)
+    # if not(data['it'] <= 1 or data['it'] % 2 == 0 or data['it'] == params['max_iter']):
+    #     return
 
-    length = data['gbest']['details']['length']
-    title = plt.title(f"Iteration: {it}, Length: {length:.2f}")
-    
-    # フレームの保存
-    frames.append([path_line, title])
+    frame_data.append(data)
+
+# アニメーション用の描画
+fig, ax = plt.subplots(figsize=[7, 7])
+path_line = None
+title = ax.set_title("")
+
+def init():
+    pp.plot_environment(env)
+    global path_line
+    first_sol = frame_data[0]['gbest']['details']['sol']
+    path_line = pp.plot_path(first_sol, color='b')
+    ax.grid(True)
+    return path_line, title
+
+def update(frame):
+    global path_line
+    it = frame['it']
+    sol = frame['gbest']['details']['sol']
+    length = frame['gbest']['details']['length']
+
+    pp.update_path(sol, path_line)
+    title.set_text(f"Iteration: {it}, Length: {length:.2f}")
+    return path_line, title
 
 # アルゴリズムの選択
-algorithm = 'abc'  # 'pso', 'abc', 'aco' から選択
+algorithm = 'instabae_v2'  # 'pso', 'abc', 'aco', 'instabae' から選択
 
 if algorithm == 'pso':
     # PSO parameters
@@ -90,7 +103,7 @@ elif algorithm == 'abc':
         'pop_size': 100,
         'limit': 50,
     }
-    bestsol, pop = ABCAlgorithm(problem, callback=callback, **params)
+    bestsol, pop = ABC_Algorithm(problem, callback=callback, **params)
 
 elif algorithm == 'aco':
     # ACO parameters
@@ -102,9 +115,26 @@ elif algorithm == 'aco':
         'rho': 0.1,
         'Q': 1.0,
     }
-    bestsol, pop = ABCAlgorithm(problem, callback=callback, **params)
+    bestsol, pop = ACO_Algorithm(problem, callback=callback, **params)
+
+elif algorithm == 'instabae':
+    # Instabae parameters
+    params = {
+        'max_iter': 100,
+        'n_clusters': 10,
+        'pop_size': 100,
+        'r': 5,
+    }
+    bestsol, pop = IA_Algorithm(problem, callback=callback, **params)
+
+elif algorithm == 'instabae_v2':
+    params = {
+        'max_iter': 100,
+        'pop_size': 100,
+    }
+    bestsol, pop = IA_V2_Algorithm(problem, callback=callback, **params)
 
 # アニメーションの作成
-ani = anime.ArtistAnimation(plt.gcf(), frames, interval=200, blit=True, repeat=False)
-ani.save(f'path-planning\images\path_planning_{algorithm}.gif', writer='pillow')
-plt.show()
+ani = animation.FuncAnimation(fig, update, frames=frame_data, init_func=init, blit=False, interval=200, repeat=False)
+ani.save(f'path-planning/images/path_planning_{algorithm}.gif', writer='pillow')
+

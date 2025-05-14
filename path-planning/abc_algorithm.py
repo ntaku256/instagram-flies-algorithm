@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy
 
-def ABC(problem, **kwargs):
+def ABC_Algorithm(problem, **kwargs):
     max_iter = kwargs.get('max_iter', 100)
     pop_size = kwargs.get('pop_size', 100)
     limit = kwargs.get('limit', 50)  # 試行回数の制限

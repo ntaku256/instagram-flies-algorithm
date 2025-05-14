@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy
 
-def ACO(problem, **kwargs):
+def ACO_Algorithm(problem, **kwargs):
     max_iter = kwargs.get('max_iter', 100)
     pop_size = kwargs.get('pop_size', 100)
     alpha = kwargs.get('alpha', 1.0)  # フェロモンの重要度
