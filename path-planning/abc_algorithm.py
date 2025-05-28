@@ -13,13 +13,18 @@ def ABC_Algorithm(problem, **kwargs):
         'cost': None,
         'details': None,
         'trial': 0,  # 試行回数
+        'best': {
+            'position': None,
+            'cost': np.inf,
+            'details': None,
+        },
     }
 
     # Extract Problem Info
     cost_function = problem['cost_function']
     var_min = problem['var_min']
     var_max = problem['var_max']
-    num_var = problem['num_var']
+    num_var = problem['num_var']*2
     
     # Initialize Global Best
     gbest = {
@@ -34,7 +39,9 @@ def ABC_Algorithm(problem, **kwargs):
         pop.append(deepcopy(empty_bee))
         pop[i]['position'] = np.random.uniform(var_min, var_max, num_var)
         pop[i]['cost'], pop[i]['details'] = cost_function(pop[i]['position'])
-        
+        pop[i]['best']['position'] = deepcopy(pop[i]['position'])
+        pop[i]['best']['cost'] = pop[i]['cost']
+        pop[i]['best']['details'] = pop[i]['details']
         if pop[i]['cost'] < gbest['cost']:
             gbest = deepcopy({
                 'position': pop[i]['position'].copy(),
@@ -61,6 +68,11 @@ def ABC_Algorithm(problem, **kwargs):
                 pop[i]['cost'] = new_cost
                 pop[i]['details'] = new_details
                 pop[i]['trial'] = 0
+                # bestの更新
+                if new_cost < pop[i]['best']['cost']:
+                    pop[i]['best']['position'] = deepcopy(new_position)
+                    pop[i]['best']['cost'] = new_cost
+                    pop[i]['best']['details'] = new_details
             else:
                 pop[i]['trial'] += 1
 
@@ -93,6 +105,11 @@ def ABC_Algorithm(problem, **kwargs):
                 pop[selected]['cost'] = new_cost
                 pop[selected]['details'] = new_details
                 pop[selected]['trial'] = 0
+                # bestの更新
+                if new_cost < pop[selected]['best']['cost']:
+                    pop[selected]['best']['position'] = deepcopy(new_position)
+                    pop[selected]['best']['cost'] = new_cost
+                    pop[selected]['best']['details'] = new_details
             else:
                 pop[selected]['trial'] += 1
 
@@ -110,6 +127,10 @@ def ABC_Algorithm(problem, **kwargs):
                 pop[i]['position'] = np.random.uniform(var_min, var_max, num_var)
                 pop[i]['cost'], pop[i]['details'] = cost_function(pop[i]['position'])
                 pop[i]['trial'] = 0
+                # bestのリセット
+                pop[i]['best']['position'] = deepcopy(pop[i]['position'])
+                pop[i]['best']['cost'] = pop[i]['cost']
+                pop[i]['best']['details'] = pop[i]['details']
 
         print('Iteration {}: Best Cost = {}'.format(it + 1, gbest['cost']))
         

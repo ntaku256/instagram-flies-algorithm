@@ -3,8 +3,6 @@ import numpy as np
 from copy import deepcopy
 from sklearn.metrics import silhouette_score
 
-print(np.random.dirichlet([1, 1, 1]))
-
 def IA_Algorithm(problem, **kwargs):
 
     max_iter = kwargs.get('max_iter', 100)

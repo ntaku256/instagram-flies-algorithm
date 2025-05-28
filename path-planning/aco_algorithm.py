@@ -15,6 +15,11 @@ def ACO_Algorithm(problem, **kwargs):
         'position': None,
         'cost': None,
         'details': None,
+        'best': {
+            'position': None,
+            'cost': np.inf,
+            'details': None,
+        },
     }
 
     # Extract Problem Info
@@ -42,7 +47,9 @@ def ACO_Algorithm(problem, **kwargs):
         pop.append(deepcopy(empty_ant))
         pop[i]['position'] = np.random.uniform(var_min, var_max, num_var)
         pop[i]['cost'], pop[i]['details'] = cost_function(pop[i]['position'])
-        
+        pop[i]['best']['position'] = deepcopy(pop[i]['position'])
+        pop[i]['best']['cost'] = pop[i]['cost']
+        pop[i]['best']['details'] = pop[i]['details']
         if pop[i]['cost'] < gbest['cost']:
             gbest = deepcopy({
                 'position': pop[i]['position'].copy(),
@@ -78,6 +85,11 @@ def ACO_Algorithm(problem, **kwargs):
                 pop[i]['position'] = new_position
                 pop[i]['cost'] = new_cost
                 pop[i]['details'] = new_details
+                # bestの更新
+                if new_cost < pop[i]['best']['cost']:
+                    pop[i]['best']['position'] = deepcopy(new_position)
+                    pop[i]['best']['cost'] = new_cost
+                    pop[i]['best']['details'] = new_details
                 
                 # フェロモンの更新
                 for j in range(num_var):
