@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Obstacles Editor</title>
+  <style>
+    body { font-family: sans-serif; background: #fafbfc; }
+    #canvas { border: 1px solid #888; background: #fff; }
+    #output { margin-top: 1em; font-family: monospace; background: #f5f5f5; padding: 0.5em; width: 95%; min-height: 5em; }
+    .ctrl { margin-bottom: 10px; }
+    #errmsg { color: #c33; margin: 0.5em 0; }
+    #resetBtn { margin: 10px 0 10px 6px; padding: 4px 16px; border-radius: 6px; background: #eee; border: 1px solid #aaa; cursor: pointer; }
+    #resetBtn:hover { background: #ffdede; border-color: #c33; color: #c33; }
+  </style>
+</head>
+<body>
+  <h2>障害物エディタ</h2>
+  <div class="ctrl">
+    <span>障害物半径:
+      <input type="range" id="radius" min="2" max="20" value="8" />
+      <span id="radiusVal">8</span>
+      <span id="radiusEditMsg" style="color:#e55"></span>
+      <button id="resetBtn" title="初期状態に戻す">初期化</button>
+    </span>
+  </div>
+  <canvas id="canvas" width="500" height="500"></canvas>
+  <div>
+    <b>obstacles:</b>
+    <div id="errmsg"></div>
+    <textarea id="output" spellcheck="false" rows="8"></textarea>
+  </div>
+  <script>
+    // 初期状態
+    const initialObstacles = [
+      { center: [20, 40], radius: 5 },
+      { center: [30, 30], radius: 9 },
+      { center: [30, 70], radius: 10 },
+      { center: [50, 10], radius: 8 },
+      { center: [60, 80], radius: 15 },
+      { center: [70, 40], radius: 12 },
+      { center: [80, 20], radius: 7 },
+    ];
+    let obstacles = JSON.parse(JSON.stringify(initialObstacles)); // deep copy
+
+    const width = 100, height = 100; // 環境サイズ
+    const scale = 5; // 1単位 = 5px
+    const robot_radius = 1, start = [5, 5], goal = [95, 95];
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const radiusInput = document.getElementById('radius');
+    const radiusVal = document.getElementById('radiusVal');
+    const output = document.getElementById('output');
+    const radiusEditMsg = document.getElementById('radiusEditMsg');
+    const errmsg = document.getElementById('errmsg');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let selectedIdx = null;
+
+    // Y座標変換: 論理→canvas
+    function ly(y) {
+      return canvas.height - y * scale;
+    }
+    // Y座標変換: canvas→論理
+    function ry(yc) {
+      return (canvas.height - yc) / scale;
+    }
+
+    // 描画
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = "#333";
+      ctx.strokeRect(0, 0, width*scale, height*scale);
+
+      // Start & Goal
+      ctx.fillStyle = "#3a3";
+      ctx.beginPath();
+      ctx.arc(start[0]*scale, ly(start[1]), robot_radius*scale, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.fillText("Start", start[0]*scale+4, ly(start[1])-4);
+
+      ctx.fillStyle = "#a33";
+      ctx.beginPath();
+      ctx.arc(goal[0]*scale, ly(goal[1]), robot_radius*scale, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.fillText("Goal", goal[0]*scale+4, ly(goal[1])-4);
+
+      // Obstacles
+      for(let i=0; i<obstacles.length; ++i) {
+        let obs = obstacles[i];
+        ctx.save();
+        if(i === selectedIdx) {
+          ctx.strokeStyle = "#e55";
+          ctx.lineWidth = 3;
+        } else {
+          ctx.strokeStyle = "#669";
+          ctx.lineWidth = 1;
+        }
+        ctx.fillStyle = "rgba(100,100,200,0.5)";
+        ctx.beginPath();
+        ctx.arc(obs.center[0]*scale, ly(obs.center[1]), obs.radius*scale, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // obstacles出力(1行ごと)
+    function formatObstacles(obsArr) {
+      return '[\n  ' +
+        obsArr.map(o => `{"center": [${o.center[0]}, ${o.center[1]}], "radius": ${o.radius}}`).join(',\n  ') +
+        '\n]';
+    }
+    function updateOutput() {
+      output.value = formatObstacles(obstacles);
+    }
+
+    // 追加・選択・削除操作
+    let draggingIdx = null, dragOffset = [0,0];
+    canvas.addEventListener('mousedown', (e) => {
+      let rect = canvas.getBoundingClientRect();
+      let mx = (e.clientX - rect.left) / scale;
+      let my = ry(e.clientY - rect.top);
+
+      // 右クリック：削除
+      if(e.button === 2) {
+        for(let i=0; i<obstacles.length; ++i) {
+          let obs = obstacles[i];
+          let dx = mx - obs.center[0], dy = my - obs.center[1];
+          if(Math.hypot(dx, dy) < obs.radius) {
+            obstacles.splice(i, 1);
+            if(selectedIdx === i) selectedIdx = null;
+            if(selectedIdx !== null && selectedIdx > i) selectedIdx--;
+            draw(); updateOutput(); updateRadiusEdit();
+            return false;
+          }
+        }
+        return false;
+      }
+
+      // 左クリック：既存選択・ドラッグ
+      for(let i=obstacles.length-1; i>=0; --i) {
+        let obs = obstacles[i];
+        let dx = mx - obs.center[0], dy = my - obs.center[1];
+        if(Math.hypot(dx, dy) < obs.radius) {
+          draggingIdx = i;
+          selectedIdx = i;
+          dragOffset = [mx-obs.center[0], my-obs.center[1]];
+          updateRadiusEdit();
+          draw(); updateOutput();
+          return;
+        }
+      }
+      // 新規追加
+      obstacles.push({ center: [mx, my], radius: parseFloat(radiusInput.value) });
+      selectedIdx = obstacles.length-1;
+      draw(); updateOutput(); updateRadiusEdit();
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if(draggingIdx !== null) {
+        let rect = canvas.getBoundingClientRect();
+        let mx = (e.clientX - rect.left) / scale;
+        let my = ry(e.clientY - rect.top);
+        obstacles[draggingIdx].center = [mx-dragOffset[0], my-dragOffset[1]];
+        draw(); updateOutput();
+      }
+    });
+    canvas.addEventListener('mouseup', ()=>{ draggingIdx = null; });
+
+    // 半径調整
+    radiusInput.addEventListener('input', () => {
+      radiusVal.textContent = radiusInput.value;
+      if(selectedIdx !== null) {
+        obstacles[selectedIdx].radius = parseFloat(radiusInput.value);
+        draw(); updateOutput();
+      }
+    });
+
+    function updateRadiusEdit() {
+      if(selectedIdx !== null && obstacles[selectedIdx]) {
+        radiusInput.value = obstacles[selectedIdx].radius;
+        radiusVal.textContent = obstacles[selectedIdx].radius;
+        radiusEditMsg.textContent = `← 選択中の障害物を編集中 (#${selectedIdx+1})`;
+      } else {
+        radiusEditMsg.textContent = '';
+      }
+    }
+
+    // テキストエリア→obstacles同期
+    output.addEventListener('input', ()=>{
+      try {
+        errmsg.textContent = '';
+        let txt = output.value;
+        let arr = eval(txt); // 1行形式にも対応
+        if(Array.isArray(arr) && arr.every(o =>
+            Array.isArray(o.center) &&
+            o.center.length===2 &&
+            typeof o.center[0]==='number' &&
+            typeof o.center[1]==='number' &&
+            typeof o.radius==='number'
+        )) {
+          obstacles = arr;
+          selectedIdx = null;
+          draw();
+          updateRadiusEdit();
+        } else {
+          errmsg.textContent = '形式が正しくありません。';
+        }
+      } catch(e) {
+        errmsg.textContent = 'パースエラー: ' + e.message;
+      }
+    });
+
+    // 初期化ボタン
+    resetBtn.addEventListener('click', () => {
+      obstacles = JSON.parse(JSON.stringify(initialObstacles));
+      selectedIdx = null;
+      draw(); updateOutput(); updateRadiusEdit();
+      errmsg.textContent = '';
+    });
+
+    // Ctrl+S 保存ショートカット抑止
+    window.addEventListener('keydown', function(e){
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+      }
+    });
+
+    // コンテキストメニュー抑止
+    canvas.addEventListener('contextmenu', (e)=>e.preventDefault());
+
+    // 初期表示
+    draw();
+    updateOutput();
+    updateRadiusEdit();
+  </script>
+</body>
+</html>
