@@ -175,7 +175,8 @@ def IA_Algorithm(problem, **kwargs):
             callback({
                 'it': it + 1,
                 'gbest': deepcopy(gbest),
-                'pop': deepcopy(pop)
+                'pop': deepcopy(pop),
+                'centers': deepcopy(centers)
             })
 
     return gbest, pop

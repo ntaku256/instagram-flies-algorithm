@@ -76,13 +76,14 @@ def update(frame):
     it = frame['it']
     sol = frame['gbest']['details']['sol']
     length = frame['gbest']['details']['length']
+    best_score = frame['gbest']['cost']
 
     pp.update_path(sol, path_line)
-    title.set_text(f"Iteration: {it}, Length: {length:.2f}")
+    title.set_text(f"Iteration: {it}, Length: {length:.2f}, Best Score: {best_score:.2f}")
     return path_line, title
 
 # アルゴリズムの選択
-algorithm = 'aco'  # 'pso', 'abc', 'aco', 'instabae' から選択
+algorithm = 'instabae'  # 'pso', 'abc', 'aco', 'instabae' から選択
 
 if algorithm == 'pso':
     # PSO parameters
