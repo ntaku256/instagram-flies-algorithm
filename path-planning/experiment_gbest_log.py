@@ -4,11 +4,12 @@ from pso import PSO
 from abc_algorithm import ABC_Algorithm
 from aco_algorithm import ACO_Algorithm
 from instabae_algorithm import IA_Algorithm
+from ga_algorithm import GA_Algorithm
 import path_planning as pp
 
 # パラメータ
-algorithm = 'aco'  # 'pso', 'abc', 'aco', 'instabae'
-n_trials = 10
+algorithm = 'abc'  # 'pso', 'abc', 'aco', 'instabae', 'ga'
+n_trials = 100
 max_iter = 100
 
 # 問題定義
@@ -47,6 +48,8 @@ template_params = {
     'abc': dict(max_iter=max_iter, pop_size=100, limit=50),
     'aco': dict(max_iter=max_iter, pop_size=100, alpha=1.0, beta=2.0, rho=0.1, Q=1.0),
     'instabae': dict(max_iter=max_iter, n_clusters=10, pop_size=100, r=5),
+    'ga': dict(max_iter=max_iter, pop_size=100, crossover_rate=0.8, mutation_rate=0.1, mutation_step=0.1, 
+               selection_method='tournament', crossover_method='uniform', tournament_size=3, elite_count=2),
 }
 
 algo_params = template_params[algorithm]
@@ -66,6 +69,8 @@ for trial in range(n_trials):
         ACO_Algorithm(problem, callback=callback, **algo_params)
     elif algorithm == 'instabae':
         IA_Algorithm(problem, callback=callback, **algo_params)
+    elif algorithm == 'ga':
+        GA_Algorithm(problem, callback=callback, **algo_params)
     all_gbest_histories.append(gbest_history)
 
 # DataFrame化

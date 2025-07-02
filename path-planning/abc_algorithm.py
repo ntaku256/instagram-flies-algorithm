@@ -4,15 +4,14 @@ from copy import deepcopy
 def ABC_Algorithm(problem, **kwargs):
     max_iter = kwargs.get('max_iter', 100)
     pop_size = kwargs.get('pop_size', 100)
-    limit = kwargs.get('limit', 50)  # 試行回数の制限
+    limit = kwargs.get('limit', 50)
     callback = kwargs.get('callback', None)
     
-    # Empty Bee Template
     empty_bee = {
         'position': None,
         'cost': None,
         'details': None,
-        'trial': 0,  # 試行回数
+        'trial': 0,
         'best': {
             'position': None,
             'cost': np.inf,
@@ -20,55 +19,51 @@ def ABC_Algorithm(problem, **kwargs):
         },
     }
 
-    # Extract Problem Info
     cost_function = problem['cost_function']
     var_min = problem['var_min']
     var_max = problem['var_max']
-    num_var = problem['num_var']*2
-    
-    # Initialize Global Best
+    num_var = problem['num_var'] * 2
+
     gbest = {
         'position': None,
         'cost': np.inf,
         'details': None,
     }
 
-    # Create Initial Population
     pop = []
     for i in range(pop_size):
         pop.append(deepcopy(empty_bee))
-        pop[i]['position'] = np.random.uniform(var_min, var_max, num_var)
-        pop[i]['cost'], pop[i]['details'] = cost_function(pop[i]['position'])
-        pop[i]['best']['position'] = deepcopy(pop[i]['position'])
-        pop[i]['best']['cost'] = pop[i]['cost']
-        pop[i]['best']['details'] = pop[i]['details']
-        if pop[i]['cost'] < gbest['cost']:
-            gbest = deepcopy({
-                'position': pop[i]['position'].copy(),
-                'cost': pop[i]['cost'],
-                'details': pop[i]['details']
-            })
+        pos = np.random.uniform(var_min, var_max, num_var)
+        cost, details = cost_function(pos)
+        pop[i]['position'] = pos
+        pop[i]['cost'] = cost
+        pop[i]['details'] = details
+        pop[i]['best']['position'] = deepcopy(pos)
+        pop[i]['best']['cost'] = cost
+        pop[i]['best']['details'] = details
+        if cost < gbest['cost']:
+            gbest = deepcopy({'position': pos.copy(), 'cost': cost, 'details': details})
 
-    # ABC Loop
     for it in range(max_iter):
-        # Employed Bees Phase
         for i in range(pop_size):
-            # 新しい解の生成
-            phi = np.random.uniform(-1, 1, num_var)
             j = np.random.randint(0, pop_size)
-            new_position = pop[i]['position'] + phi * (pop[i]['position'] - pop[j]['position'])
+            if j == i:
+                j = (j + 1) % pop_size
+            phi = np.random.uniform(-1, 1, num_var) * 0.1  # 小さく
+            # 改良: gbest方向の探索
+            if np.random.rand() < 0.5:
+                new_position = pop[i]['position'] + phi * (gbest['position'] - pop[i]['position'])
+            else:
+                new_position = pop[i]['position'] + phi * (pop[i]['position'] - pop[j]['position'])
+
             new_position = np.clip(new_position, var_min, var_max)
-            
-            # 新しい解の評価
             new_cost, new_details = cost_function(new_position)
-            
-            # 貪欲選択
+
             if new_cost < pop[i]['cost']:
                 pop[i]['position'] = new_position
                 pop[i]['cost'] = new_cost
                 pop[i]['details'] = new_details
                 pop[i]['trial'] = 0
-                # bestの更新
                 if new_cost < pop[i]['best']['cost']:
                     pop[i]['best']['position'] = deepcopy(new_position)
                     pop[i]['best']['cost'] = new_cost
@@ -76,36 +71,33 @@ def ABC_Algorithm(problem, **kwargs):
             else:
                 pop[i]['trial'] += 1
 
-            # グローバルベストの更新
-            if pop[i]['cost'] < gbest['cost']:
-                gbest = deepcopy({
-                    'position': pop[i]['position'].copy(),
-                    'cost': pop[i]['cost'],
-                    'details': pop[i]['details']
-                })
+            if new_cost < gbest['cost']:
+                gbest = deepcopy({'position': new_position.copy(), 'cost': new_cost, 'details': new_details})
 
-        # Onlooker Bees Phase
-        fitness = np.array([1.0 / (1.0 + bee['cost']) for bee in pop])
+        # ソフトマックスによる確率選択
+        raw_fitness = np.array([bee['cost'] for bee in pop])
+        fitness = np.exp(-raw_fitness / (np.std(raw_fitness) + 1e-8))
         fitness = fitness / np.sum(fitness)
-        
-        for i in range(pop_size):
-            # ルーレット選択
+
+        for _ in range(pop_size):
             selected = np.random.choice(pop_size, p=fitness)
-            phi = np.random.uniform(-1, 1, num_var)
             j = np.random.randint(0, pop_size)
-            new_position = pop[selected]['position'] + phi * (pop[selected]['position'] - pop[j]['position'])
+            if j == selected:
+                j = (j + 1) % pop_size
+            phi = np.random.uniform(-1, 1, num_var) * 0.1
+            if np.random.rand() < 0.5:
+                new_position = pop[selected]['position'] + phi * (gbest['position'] - pop[selected]['position'])
+            else:
+                new_position = pop[selected]['position'] + phi * (pop[selected]['position'] - pop[j]['position'])
+
             new_position = np.clip(new_position, var_min, var_max)
-            
-            # 新しい解の評価
             new_cost, new_details = cost_function(new_position)
-            
-            # 貪欲選択
+
             if new_cost < pop[selected]['cost']:
                 pop[selected]['position'] = new_position
                 pop[selected]['cost'] = new_cost
                 pop[selected]['details'] = new_details
                 pop[selected]['trial'] = 0
-                # bestの更新
                 if new_cost < pop[selected]['best']['cost']:
                     pop[selected]['best']['position'] = deepcopy(new_position)
                     pop[selected]['best']['cost'] = new_cost
@@ -113,27 +105,28 @@ def ABC_Algorithm(problem, **kwargs):
             else:
                 pop[selected]['trial'] += 1
 
-            # グローバルベストの更新
-            if pop[selected]['cost'] < gbest['cost']:
-                gbest = deepcopy({
-                    'position': pop[selected]['position'].copy(),
-                    'cost': pop[selected]['cost'],
-                    'details': pop[selected]['details']
-                })
+            if new_cost < gbest['cost']:
+                gbest = deepcopy({'position': new_position.copy(), 'cost': new_cost, 'details': new_details})
 
-        # Scout Bees Phase
         for i in range(pop_size):
             if pop[i]['trial'] >= limit:
-                pop[i]['position'] = np.random.uniform(var_min, var_max, num_var)
-                pop[i]['cost'], pop[i]['details'] = cost_function(pop[i]['position'])
+                # 改良: gbest近傍に再配置
+                noise = np.random.normal(0, 0.1, num_var) * (var_max - var_min)
+                new_pos = gbest['position'] + noise
+                new_pos = np.clip(new_pos, var_min, var_max)
+                cost, details = cost_function(new_pos)
+                pop[i]['position'] = new_pos
+                pop[i]['cost'] = cost
+                pop[i]['details'] = details
                 pop[i]['trial'] = 0
-                # bestのリセット
-                pop[i]['best']['position'] = deepcopy(pop[i]['position'])
-                pop[i]['best']['cost'] = pop[i]['cost']
-                pop[i]['best']['details'] = pop[i]['details']
+                pop[i]['best']['position'] = deepcopy(new_pos)
+                pop[i]['best']['cost'] = cost
+                pop[i]['best']['details'] = details
+                if cost < gbest['cost']:
+                    gbest = deepcopy({'position': new_pos.copy(), 'cost': cost, 'details': details})
 
-        print('Iteration {}: Best Cost = {}'.format(it + 1, gbest['cost']))
-        
+        print(f'Iteration {it + 1}: Best Cost = {gbest["cost"]:.6f}')
+
         if callable(callback):
             callback({
                 'it': it + 1,
@@ -141,4 +134,4 @@ def ABC_Algorithm(problem, **kwargs):
                 'pop': pop,
             })
 
-    return gbest, pop 
+    return gbest, pop

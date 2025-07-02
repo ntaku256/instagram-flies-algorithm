@@ -8,6 +8,7 @@ from abc_algorithm import ABC_Algorithm
 from aco_algorithm import ACO_Algorithm
 from instabae_algorithm import IA_Algorithm
 from instabae_v2_algorithm import IA_V2_Algorithm
+from ga_algorithm import GA_Algorithm
 from copy import deepcopy
 import os
 
@@ -206,7 +207,7 @@ def update(frame):
 
 # アルゴリズムの選択
 obstacles = 'obstacles5'
-algorithm = 'aco'  # 'pso', 'abc', 'aco', 'instabae' から選択
+algorithm = 'ga'  # 'pso', 'abc', 'aco', 'instabae', 'ga' から選択
 
 if algorithm == 'pso':
     # PSO parameters
@@ -221,7 +222,7 @@ if algorithm == 'pso':
     }
     bestsol, pop = PSO(problem, callback=callback, **params)
 
-elif algorithm == 'pso':
+elif algorithm == 'abc':
     # ABC parameters
     params = {
         'max_iter': 100,
@@ -258,6 +259,21 @@ elif algorithm == 'instabae_v2':
         'pop_size': 100,
     }
     bestsol, pop = IA_V2_Algorithm(problem, callback=callback, **params)
+
+elif algorithm == 'ga':
+    # GA parameters
+    params = {
+        'max_iter': 100,
+        'pop_size': 100,
+        'crossover_rate': 0.8,
+        'mutation_rate': 0.1,
+        'mutation_step': 0.1,
+        'selection_method': 'tournament',
+        'crossover_method': 'uniform',
+        'tournament_size': 3,
+        'elite_count': 2,
+    }
+    bestsol, pop = GA_Algorithm(problem, callback=callback, **params)
 
 # なければ保存用ディレクトリを作成
 save_dir = f'path-planning/images/{obstacles}'
