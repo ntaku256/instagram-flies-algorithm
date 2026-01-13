@@ -28,6 +28,13 @@ def PSO(problem, **kwargs):
 
     # Extract Problem Info
     cost_function = problem['cost_function']
+    call_count = {'count': 0}
+
+    def counted_cost_function(x):
+        call_count['count'] += 1
+        print(x)
+        return cost_function(x)
+    
     var_min = problem['var_min']
     var_max = problem['var_max']
     num_var = problem['num_var']
@@ -45,7 +52,7 @@ def PSO(problem, **kwargs):
         pop.append(deepcopy(empty_particle))
         pop[i]['position'] = np.random.uniform(var_min, var_max, num_var)
         pop[i]['velocity'] = np.zeros(num_var)
-        pop[i]['cost'], pop[i]['details'] = cost_function(pop[i]['position'])
+        pop[i]['cost'], pop[i]['details'] = counted_cost_function(pop[i]['position'])
         pop[i]['best']['position'] = deepcopy(pop[i]['position'])
         pop[i]['best']['cost'] = pop[i]['cost']
         pop[i]['best']['details'] = pop[i]['details']
@@ -73,7 +80,7 @@ def PSO(problem, **kwargs):
                 pop[i]['position'] += pop[i]['velocity']
                 pop[i]['position'] = np.clip(pop[i]['position'], var_min, var_max)
 
-            pop[i]['cost'], pop[i]['details'] = cost_function(pop[i]['position'])
+            pop[i]['cost'], pop[i]['details'] = counted_cost_function(pop[i]['position'])
             
             if pop[i]['cost'] < pop[i]['best']['cost']:
                 pop[i]['best']['position'] = deepcopy(pop[i]['position'])
@@ -85,6 +92,7 @@ def PSO(problem, **kwargs):
 
         w *= wdamp
         print('Iteration {}: Best Cost = {}'.format(it + 1, gbest['cost']))
+        print("Total cost_function calls:", call_count['count'])
         
         if callable(callback):
             callback({

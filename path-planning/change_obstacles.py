@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from pso import PSO
+from cpso import CPSO
+from ccpso2 import CCPSO2
 from abc_algorithm import ABC_Algorithm
 from aco_algorithm import ACO_Algorithm
 from instabae_algorithm import IA_Algorithm
@@ -158,9 +160,13 @@ for obs in obstacles:
     env.add_obstacle(pp.Obstacle(**obs))
 
 # Create cost function
-num_control_points = 3
+num_control_points = 4
 resolution = 50
 cost_function = pp.EnvCostFunction(env, num_control_points, resolution)
+
+xy = [10, 90, 50, 90, 50, 10, 90, 10]
+
+print(cost_function(xy))
 
 # Optimization Problem
 problem = {
@@ -175,8 +181,8 @@ frame_data = []
 
 # callbackでデータだけ貯めておく
 def callback(data):
-    # if not(data['it'] <= 1 or data['it'] % 2 == 0 or data['it'] == params['max_iter']):
-    #     return
+    if not(data['it'] <= 1 or data['it'] % 10 == 0 or data['it'] == params['max_iter']):
+        return
 
     frame_data.append(deepcopy(data))
 
@@ -206,13 +212,13 @@ def update(frame):
 
 # アルゴリズムの選択
 obstacles = 'obstacles5'
-algorithm = 'aco'  # 'pso', 'abc', 'aco', 'instabae' から選択
+algorithm = 'pso'  # 'pso', 'cpso', 'ccpso2', 'abc', 'aco', 'instabae', 'instabae_v2' から選択
 
-if algorithm == 'pso':
+if algorithm == 'psos':
     # PSO parameters
     params = {
-        'max_iter': 100,
-        'pop_size': 100,
+        'max_iter': 1000,
+        'pop_size': 200,
         'c1': 2,
         'c2': 1,
         'w': 0.8,
@@ -221,7 +227,31 @@ if algorithm == 'pso':
     }
     bestsol, pop = PSO(problem, callback=callback, **params)
 
-elif algorithm == 'pso':
+elif algorithm == 'cpso':
+    # CPSO parameters
+    params = {
+        'max_iter': 100,
+        'pop_size': 100,
+        'n_subs': 2,  # サブスワームの数
+        'c1': 2,
+        'c2': 1,
+        'w': 0.8,
+        'wdamp': 1,
+        'resetting': 25,
+    }
+    bestsol, pop = CPSO(problem, callback=callback, **params)
+
+elif algorithm == 'ccpso2':
+    # CCPSO2 parameters
+    params = {
+        'max_iter': 1000,
+        'pop_size': 100,
+        'S': (2,5,10,50,100),
+        'p_cauchy': 0.5,
+    }
+    bestsol, pop = CCPSO2(problem, callback=callback, **params)
+
+elif algorithm == 'abc':
     # ABC parameters
     params = {
         'max_iter': 100,
@@ -258,6 +288,9 @@ elif algorithm == 'instabae_v2':
         'pop_size': 100,
     }
     bestsol, pop = IA_V2_Algorithm(problem, callback=callback, **params)
+
+else:
+    raise ValueError(f"Unknown algorithm: {algorithm}")
 
 # なければ保存用ディレクトリを作成
 save_dir = f'path-planning/images/{obstacles}'
